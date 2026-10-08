@@ -1,0 +1,378 @@
+/* =========================================================
+   21. LIBRARY DASHBOARD SUMMARY
+   ========================================================= */
+
+SELECT
+    (SELECT COUNT(*)
+     FROM books) AS different_books,
+
+    (SELECT COALESCE(SUM(total_copies), 0)
+     FROM books) AS total_copies,
+
+    (SELECT COALESCE(SUM(available_copies), 0)
+     FROM books) AS available_copies,
+
+    (SELECT COUNT(*)
+     FROM transactions
+     WHERE return_date IS NULL) AS currently_issued,
+
+    (SELECT COUNT(*)
+     FROM members) AS total_members,
+
+    (SELECT COUNT(*)
+     FROM authors) AS total_authors,
+
+    (SELECT COUNT(*)
+     FROM categories) AS total_categories,
+
+    (SELECT COALESCE(SUM(fine), 0)
+     FROM transactions) AS total_fine;
+
+
+/* =========================================================
+   22. CURRENTLY ISSUED BOOK DETAILS
+   ========================================================= */
+
+SELECT
+    t.transaction_id,
+    m.name AS member_name,
+    b.title AS book_name,
+    t.issue_date,
+    t.due_date
+FROM transactions t
+JOIN members m
+    ON t.member_id = m.member_id
+JOIN books b
+    ON t.book_id = b.book_id
+WHERE t.return_date IS NULL;
+
+
+/* =========================================================
+   23. RETURNED BOOK DETAILS
+   ========================================================= */
+
+SELECT
+    t.transaction_id,
+    m.name AS member_name,
+    b.title AS book_name,
+    t.issue_date,
+    t.due_date,
+    t.return_date,
+    t.fine
+FROM transactions t
+JOIN members m
+    ON t.member_id = m.member_id
+JOIN books b
+    ON t.book_id = b.book_id
+WHERE t.return_date IS NOT NULL;
+
+
+/* =========================================================
+   24. OVERDUE BOOKS
+   ========================================================= */
+
+SELECT
+    t.transaction_id,
+    m.name AS member_name,
+    b.title AS book_name,
+    t.due_date,
+    DATEDIFF(CURDATE(), t.due_date) AS days_overdue,
+    DATEDIFF(CURDATE(), t.due_date) * 5 AS current_fine
+FROM transactions t
+JOIN members m
+    ON t.member_id = m.member_id
+JOIN books b
+    ON t.book_id = b.book_id
+WHERE t.return_date IS NULL
+AND t.due_date < CURDATE();
+
+
+/* =========================================================
+   25. SEARCH BOOK BY TITLE
+   ========================================================= */
+
+SELECT
+    b.book_id,
+    b.title,
+    a.author_name,
+    c.category_name,
+    b.publisher,
+    b.available_copies
+FROM books b
+JOIN authors a
+    ON b.author_id = a.author_id
+JOIN categories c
+    ON b.category_id = c.category_id
+WHERE b.title LIKE '%Database%';
+
+
+/* =========================================================
+   26. SEARCH BOOKS BY CATEGORY
+   ========================================================= */
+
+SELECT
+    b.book_id,
+    b.title,
+    a.author_name,
+    c.category_name,
+    b.available_copies
+FROM books b
+JOIN authors a
+    ON b.author_id = a.author_id
+JOIN categories c
+    ON b.category_id = c.category_id
+WHERE c.category_name = 'Programming';
+
+
+/* =========================================================
+   27. SEARCH MEMBER BY NAME
+   ========================================================= */
+
+SELECT
+    member_id,
+    name,
+    department,
+    phone,
+    email
+FROM members
+WHERE name LIKE '%Ravi%';
+
+
+/* =========================================================
+   28. MOST BORROWED BOOK
+   ========================================================= */
+
+SELECT
+    b.book_id,
+    b.title,
+    COUNT(t.transaction_id) AS times_borrowed
+FROM books b
+LEFT JOIN transactions t
+    ON b.book_id = t.book_id
+GROUP BY b.book_id, b.title
+ORDER BY times_borrowed DESC
+LIMIT 1;
+
+
+/* =========================================================
+   29. MEMBER WITH MOST BORROWED BOOKS
+   ========================================================= */
+
+SELECT
+    m.member_id,
+    m.name,
+    COUNT(t.transaction_id) AS books_borrowed
+FROM members m
+LEFT JOIN transactions t
+    ON m.member_id = t.member_id
+GROUP BY m.member_id, m.name
+ORDER BY books_borrowed DESC
+LIMIT 1;
+
+
+/* =========================================================
+   30. TOTAL MEMBERS BY DEPARTMENT
+   ========================================================= */
+
+SELECT
+    department,
+    COUNT(*) AS total_members
+FROM members
+GROUP BY department
+ORDER BY total_members DESC;
+
+
+/* =========================================================
+   31. TOTAL BOOKS BY CATEGORY
+   ========================================================= */
+
+SELECT
+    c.category_name,
+    COALESCE(SUM(b.total_copies), 0) AS total_copies,
+    COALESCE(SUM(b.available_copies), 0) AS available_copies
+FROM categories c
+LEFT JOIN books b
+    ON c.category_id = b.category_id
+GROUP BY c.category_id, c.category_name
+ORDER BY total_copies DESC;
+
+
+/* =========================================================
+   32. LOW STOCK BOOKS
+   ========================================================= */
+
+SELECT
+    book_id,
+    title,
+    total_copies,
+    available_copies
+FROM books
+WHERE available_copies <= 1;
+
+
+/* =========================================================
+   33. LIBRARIAN LOGIN
+   ========================================================= */
+
+SELECT
+    librarian_id,
+    name,
+    username
+FROM librarians
+WHERE username = 'admin'
+AND password = 'admin123';
+
+
+/* =========================================================
+   34. CHECK ALL LIBRARIANS
+   ========================================================= */
+
+SELECT
+    librarian_id,
+    name,
+    username
+FROM librarians;
+
+
+/* =========================================================
+   35. MEMBER BORROWING HISTORY
+   ========================================================= */
+
+SELECT
+    m.name AS member_name,
+    b.title AS book_name,
+    t.issue_date,
+    t.due_date,
+    t.return_date,
+    t.fine
+FROM transactions t
+JOIN members m
+    ON t.member_id = m.member_id
+JOIN books b
+    ON t.book_id = b.book_id
+WHERE m.member_id = 1
+ORDER BY t.issue_date DESC;
+
+
+/* =========================================================
+   36. BOOK TRANSACTION HISTORY
+   ========================================================= */
+
+SELECT
+    b.title AS book_name,
+    m.name AS member_name,
+    t.issue_date,
+    t.due_date,
+    t.return_date,
+    t.fine
+FROM transactions t
+JOIN books b
+    ON t.book_id = b.book_id
+JOIN members m
+    ON t.member_id = m.member_id
+WHERE b.book_id = 1
+ORDER BY t.issue_date DESC;
+
+
+/* =========================================================
+   37. AVAILABLE BOOKS
+   ========================================================= */
+
+SELECT
+    b.book_id,
+    b.title,
+    a.author_name,
+    c.category_name,
+    b.available_copies
+FROM books b
+JOIN authors a
+    ON b.author_id = a.author_id
+JOIN categories c
+    ON b.category_id = c.category_id
+WHERE b.available_copies > 0;
+
+
+/* =========================================================
+   38. UNAVAILABLE BOOKS
+   ========================================================= */
+
+SELECT
+    b.book_id,
+    b.title,
+    a.author_name,
+    c.category_name
+FROM books b
+JOIN authors a
+    ON b.author_id = a.author_id
+JOIN categories c
+    ON b.category_id = c.category_id
+WHERE b.available_copies = 0;
+
+
+/* =========================================================
+   39. TOTAL FINE COLLECTED
+   ========================================================= */
+
+SELECT
+    COALESCE(SUM(fine), 0) AS total_fine_collected
+FROM transactions;
+
+
+/* =========================================================
+   40. COMPLETE TRANSACTION REPORT
+   ========================================================= */
+
+SELECT
+    t.transaction_id,
+    m.name AS member_name,
+    m.department,
+    b.title AS book_name,
+    a.author_name,
+    c.category_name,
+    t.issue_date,
+    t.due_date,
+    t.return_date,
+    t.fine
+FROM transactions t
+JOIN members m
+    ON t.member_id = m.member_id
+JOIN books b
+    ON t.book_id = b.book_id
+JOIN authors a
+    ON b.author_id = a.author_id
+JOIN categories c
+    ON b.category_id = c.category_id
+ORDER BY t.issue_date DESC;
+
+
+/* =========================================================
+   41. FINAL DATABASE CHECK
+   ========================================================= */
+
+SELECT 'Members' AS table_name, COUNT(*) AS total_records
+FROM members
+
+UNION ALL
+
+SELECT 'Authors', COUNT(*)
+FROM authors
+
+UNION ALL
+
+SELECT 'Categories', COUNT(*)
+FROM categories
+
+UNION ALL
+
+SELECT 'Books', COUNT(*)
+FROM books
+
+UNION ALL
+
+SELECT 'Librarians', COUNT(*)
+FROM librarians
+
+UNION ALL
+
+SELECT 'Transactions', COUNT(*)
+FROM transactions;-
